@@ -1,0 +1,907 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>出張おみやげ帳</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@500;700&display=swap">
+<style>
+/* Layout: 旅の順に並ぶ「駅スタンプ帳」。各地のページに、スタンプ・買う場所・候補リスト・写真が並ぶ */
+:root {
+  --bg: #F2F4F8;
+  --surface: #FFFFFF;
+  --ink: #1C2333;
+  --muted: #5D6679;
+  --line: #DCE1EA;
+  --ai: #2D4A8E;
+  --ai-soft: #E4EAF7;
+  --shu: #C2412D;
+  --shu-soft: #F8E6E2;
+  --ok: #2B7A57;
+  --ok-soft: #E1F1E8;
+  --shade: rgba(16, 20, 30, .72);
+  --display: "Zen Maru Gothic", "Hiragino Maru Gothic ProN", "Yu Gothic UI", sans-serif;
+  --body: "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Yu Gothic UI", "Meiryo", "Noto Sans JP", sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #11151D; --surface: #1A202A; --ink: #E7EBF2; --muted: #9AA3B4; --line: #2B3341;
+    --ai: #91A9EE; --ai-soft: #222C42; --shu: #EE7A64; --shu-soft: #3A2421;
+    --ok: #6CC49A; --ok-soft: #1C3229; --shade: rgba(0, 0, 0, .8);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #11151D; --surface: #1A202A; --ink: #E7EBF2; --muted: #9AA3B4; --line: #2B3341;
+  --ai: #91A9EE; --ai-soft: #222C42; --shu: #EE7A64; --shu-soft: #3A2421;
+  --ok: #6CC49A; --ok-soft: #1C3229; --shade: rgba(0, 0, 0, .8);
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+:root { color-scheme: light; padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px); }
+body { margin: 0; }
+img { max-width: 100%; }
+[hidden] { display: none !important; }
+body {
+  background: var(--bg); color: var(--ink); font-family: var(--body);
+  font-size: 15px; line-height: 1.6;
+}
+.wrap {
+  max-width: 760px; margin: 0 auto;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 20px 56px;
+  display: grid; gap: 20px;
+}
+h1, h2, h3 { font-family: var(--display); text-wrap: balance; margin: 0; }
+button, select, textarea, input { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 2px solid var(--ai); outline-offset: 2px; }
+
+/* 見出し */
+.top { display: grid; gap: 14px; }
+.top h1 { font-size: 26px; letter-spacing: .04em; }
+.top .sub { color: var(--muted); font-size: 13px; margin: 2px 0 0; }
+.next {
+  background: var(--surface); border: 1px solid var(--line); border-radius: 14px;
+  padding: 14px 16px; display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between;
+}
+.next .lbl { font-size: 12px; color: var(--muted); letter-spacing: .08em; }
+.next .where { font-family: var(--display); font-size: 20px; font-weight: 700; }
+.next .when { font-variant-numeric: tabular-nums; color: var(--muted); font-size: 14px; }
+.next .days { font-family: var(--display); font-size: 28px; font-weight: 700; color: var(--ai); font-variant-numeric: tabular-nums; }
+.next .days small { font-size: 14px; margin-left: 2px; }
+
+.btn {
+  border: 0; border-radius: 999px; padding: 10px 18px; font-weight: 700;
+  background: var(--ai); color: var(--surface);
+  display: inline-flex; align-items: center; gap: 8px;
+}
+.btn.ghost { background: var(--ai-soft); color: var(--ai); }
+.btn.small { padding: 6px 12px; font-size: 13px; }
+.btn.danger { background: var(--shu-soft); color: var(--shu); }
+.btn.danger.armed { background: var(--shu); color: var(--surface); }
+.btn[disabled] { opacity: .5; cursor: default; }
+.uploadbar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.uploadbar .hint { font-size: 12px; color: var(--muted); flex: 1 1 220px; min-width: 0; }
+.notice { font-size: 13px; color: var(--muted); background: var(--ai-soft); border-radius: 10px; padding: 10px 12px; }
+.notice.warn { background: var(--shu-soft); color: var(--shu); }
+
+/* 地域へのジャンプ */
+.jump { overflow-x: auto; margin: 0 -4px; padding: 2px 4px 6px; }
+.jump ol { list-style: none; margin: 0; padding: 0; display: flex; gap: 8px; width: max-content; }
+.jump a {
+  display: inline-flex; align-items: center; gap: 6px; text-decoration: none; color: var(--ink);
+  border: 1px solid var(--line); background: var(--surface); border-radius: 999px; padding: 5px 12px; font-size: 13px; white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.jump a .d { color: var(--muted); }
+.jump a.past { color: var(--muted); }
+.jump a.isnext { border-color: var(--ai); color: var(--ai); font-weight: 700; }
+
+/* 未分類 */
+.tray { background: var(--surface); border: 1px dashed var(--shu); border-radius: 14px; padding: 14px 16px; display: grid; gap: 10px; }
+.tray h2 { font-size: 16px; color: var(--shu); }
+.tray p { margin: 0; font-size: 13px; color: var(--muted); }
+.traylist { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; }
+.trayitem { display: grid; gap: 6px; }
+.trayitem select { width: 100%; padding: 6px 8px; border-radius: 8px; border: 1px solid var(--line); background: var(--bg); font-size: 13px; }
+
+/* 各地 */
+.places { display: grid; gap: 18px; }
+.place {
+  background: var(--surface); border: 1px solid var(--line); border-radius: 16px;
+  padding: 18px; display: grid; gap: 14px; scroll-margin-top: 12px;
+}
+.place.isnext { border-color: var(--ai); box-shadow: 0 0 0 1px var(--ai); }
+.phead { display: grid; grid-template-columns: auto 1fr; gap: 14px; align-items: center; }
+.stamp {
+  width: 64px; height: 64px; border-radius: 50%;
+  display: grid; place-items: center; text-align: center;
+  font-family: var(--display); font-weight: 700; font-size: 17px; line-height: 1.1;
+  border: 2px dashed var(--line); color: var(--muted);
+}
+.stamp small { display: block; font-size: 9px; letter-spacing: .1em; font-weight: 500; margin-top: 2px; font-variant-numeric: tabular-nums; }
+.stamp.inked { border: 3px double var(--shu); color: var(--shu); transform: rotate(-8deg); background: var(--shu-soft); }
+.ptitle { display: grid; gap: 2px; min-width: 0; }
+.ptitle .row { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; }
+.ptitle h2 { font-size: 22px; }
+.ptitle .date { font-variant-numeric: tabular-nums; font-weight: 700; }
+.ptitle .venue { color: var(--muted); font-size: 13px; }
+.pill { font-size: 11px; font-weight: 700; border-radius: 999px; padding: 2px 9px; letter-spacing: .04em; white-space: nowrap; }
+.pill.past { background: var(--bg); color: var(--muted); border: 1px solid var(--line); }
+.pill.next { background: var(--ai); color: var(--surface); }
+.pill.later { background: var(--ai-soft); color: var(--ai); }
+
+.buy { display: grid; grid-template-columns: auto 1fr; gap: 8px; font-size: 13px; background: var(--bg); border-radius: 10px; padding: 9px 12px; }
+.buy b { color: var(--muted); font-weight: 700; white-space: nowrap; }
+
+.items { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
+.items li { display: grid; gap: 6px; padding: 8px; border-radius: 10px; }
+.items li.req { background: var(--shu-soft); }
+.items .row1 { display: flex; flex-wrap: wrap; gap: 6px 10px; justify-content: space-between; align-items: flex-start; }
+.items .info { min-width: 0; flex: 1 1 220px; }
+.items .acts { display: flex; gap: 6px; flex-wrap: wrap; }
+.tog {
+  border: 1px solid var(--line); background: var(--surface); color: var(--muted);
+  border-radius: 999px; padding: 4px 11px; font-size: 12px; font-weight: 700; white-space: nowrap;
+}
+.tog.want[aria-pressed="true"] { background: var(--shu); border-color: var(--shu); color: var(--surface); }
+.tog.got[aria-pressed="true"] { background: var(--ok); border-color: var(--ok); color: var(--surface); }
+.tog[disabled] { opacity: .5; cursor: default; }
+.items .reqnote {
+  width: 100%; border: 1px solid var(--line); border-radius: 8px; background: var(--surface);
+  padding: 6px 9px; font-size: 13px;
+}
+
+/* お願いリスト */
+.wish { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 14px 16px; display: grid; gap: 12px; }
+.wish .bar { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 8px; }
+.wish h2 { font-size: 18px; }
+.wish .sum { font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.wish .how { margin: 0; font-size: 13px; color: var(--muted); }
+.wgroup { display: grid; gap: 4px; }
+.wgroup h3 { font-size: 15px; }
+.wgroup h3 a { color: inherit; text-decoration: none; }
+.wgroup h3 span { font-family: var(--body); font-weight: 500; color: var(--muted); font-size: 12px; margin-left: 6px; font-variant-numeric: tabular-nums; }
+.wlist { list-style: none; margin: 0; padding: 0; display: grid; gap: 3px; }
+.wlist li { display: flex; flex-wrap: wrap; gap: 2px 8px; align-items: baseline; font-size: 14px; }
+.st { font-size: 11px; font-weight: 700; border-radius: 4px; padding: 0 6px; white-space: nowrap; }
+.st.todo { background: var(--shu-soft); color: var(--shu); }
+.st.ok { background: var(--ok-soft); color: var(--ok); }
+.wlist .nt { color: var(--muted); font-size: 12px; }
+.copybox { width: 100%; min-height: 140px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); padding: 8px; font-size: 13px; }
+.jump a .n { background: var(--shu); color: var(--surface); border-radius: 999px; font-size: 10px; font-weight: 700; padding: 0 6px; }
+.items .name { font-weight: 600; }
+.items a.name {
+  color: var(--ink); text-decoration: underline dotted var(--muted); text-underline-offset: 4px;
+}
+.items a.name:hover { color: var(--ai); text-decoration-color: var(--ai); }
+.items a.name .ext {
+  display: inline-block; margin-left: 5px; font-size: 10px; font-weight: 700; color: var(--ai);
+  border: 1px solid var(--ai); border-radius: 4px; padding: 0 4px; line-height: 1.5; vertical-align: 1px;
+}
+.items .note { display: block; font-size: 12px; color: var(--muted); }
+.items .tags { display: inline-flex; gap: 4px; margin-left: 6px; vertical-align: 1px; }
+.tag { font-size: 10px; font-weight: 700; padding: 1px 6px; border-radius: 4px; background: var(--ai-soft); color: var(--ai); white-space: nowrap; }
+.tag.cold { background: var(--shu-soft); color: var(--shu); }
+.tag.self { background: var(--ok-soft); color: var(--ok); }
+.items li.done .name { text-decoration: line-through; color: var(--muted); }
+.count { font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+
+.photos { display: grid; gap: 8px; }
+.photos .bar { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 8px; }
+.photos h3 { font-size: 14px; }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 6px; }
+.thumb {
+  position: relative; aspect-ratio: 1; max-width: 100%; border-radius: 10px; overflow: hidden;
+  border: 0; padding: 0; background: var(--bg);
+}
+.thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.thumb .cap {
+  position: absolute; left: 0; right: 0; bottom: 0; padding: 14px 6px 4px; font-size: 10px; text-align: left;
+  color: #fff; background: linear-gradient(transparent, rgba(0,0,0,.6)); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.thumb.pending { display: grid; place-items: center; font-size: 11px; color: var(--muted); border: 1px dashed var(--line); }
+.thumb.pending img { opacity: .45; position: absolute; inset: 0; }
+.thumb.pending span { position: relative; background: var(--surface); padding: 2px 6px; border-radius: 6px; }
+.empty { font-size: 13px; color: var(--muted); margin: 0; }
+
+/* 写真の拡大 */
+.viewer {
+  position: fixed; inset: 0; background: var(--shade); z-index: 10;
+  display: grid; place-items: center;
+  padding: calc(16px + env(safe-area-inset-top, 0px)) max(16px, env(safe-area-inset-right, 0px)) calc(16px + env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px));
+}
+.sheet {
+  background: var(--surface); border-radius: 16px; width: min(560px, 100%); max-height: 100%; overflow: auto;
+  display: grid; gap: 12px; padding: 14px;
+}
+.sheet img { width: 100%; max-height: 56vh; object-fit: contain; border-radius: 10px; background: var(--bg); }
+.sheet .meta { font-size: 12px; color: var(--muted); }
+.field { display: grid; gap: 4px; font-size: 13px; }
+.field select, .field textarea { width: 100%; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); padding: 8px; }
+.field textarea { min-height: 64px; resize: vertical; }
+.sheet .acts { display: flex; flex-wrap: wrap; gap: 8px; justify-content: space-between; }
+.sheet .acts div { display: flex; gap: 8px; flex-wrap: wrap; }
+
+.foot { font-size: 12px; color: var(--muted); display: grid; gap: 4px; }
+.toast {
+  position: fixed; left: 50%; transform: translateX(-50%); z-index: 20;
+  bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+  background: var(--ink); color: var(--bg); padding: 9px 16px; border-radius: 999px; font-size: 13px;
+  max-width: calc(100% - 32px);
+}
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+@media (prefers-reduced-motion: no-preference) {
+  .stamp.inked { animation: press .35s ease-out; }
+  @keyframes press { from { transform: rotate(-8deg) scale(1.25); opacity: .3; } to { transform: rotate(-8deg) scale(1); opacity: 1; } }
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div>
+      <h1>出張おみやげ帳</h1>
+      <p class="sub">講習会「高度化法における判断基準達成に向けて」の出張先ごとに、買うものと写真をまとめます</p>
+    </div>
+    <div class="next" id="next"></div>
+    <div class="uploadbar">
+      <button class="btn" id="addAuto" type="button" hidden>＋ 写真を追加</button>
+      <span class="hint" id="addHint">写真の撮影場所か撮影日から、どの出張先の写真かを自動で振り分けます。わからない写真は「場所を選ぶ」に入ります。</span>
+    </div>
+    <div class="notice" id="status">写真の保存先に接続しています…</div>
+    <nav class="jump" aria-label="出張先へ移動"><ol id="jump"></ol></nav>
+  </header>
+
+  <section class="wish" id="wish" aria-label="お願いリスト"></section>
+
+  <section class="tray" id="tray" hidden>
+    <h2>場所を選ぶ</h2>
+    <p>撮影場所も撮影日もわからなかった写真です。どの出張先の写真か選んでください。</p>
+    <div class="traylist" id="traylist"></div>
+  </section>
+
+  <main class="places" id="places"></main>
+
+  <footer class="foot">
+    <span>お土産の候補は 2026-10-17 に調べた内容です。値段や売り場は変わることがあるので、出発前にお店のサイトで確かめてください。</span>
+    <span>名物の名前を押すと、その名物の画像検索（Google）が新しいタブで開きます。</span>
+    <span id="footShare">写真・「買ってきて」・「買った」の印は、この帳面を共有した人と同じものが見えます。</span>
+  </footer>
+</div>
+
+<input type="file" id="fileAuto" accept="image/*" multiple class="sr" tabindex="-1" aria-hidden="true">
+<input type="file" id="filePlace" accept="image/*" multiple class="sr" tabindex="-1" aria-hidden="true">
+
+<div class="viewer" id="viewer" hidden role="dialog" aria-modal="true" aria-label="写真"></div>
+<div class="toast" id="toast" hidden role="status"></div>
+
+<script>
+const PLACES = [
+  { id: "tokyo", area: "東京", venue: "日本教育会館", city: "千代田区一ツ橋", date: "2026-10-06", lat: 35.6946, lon: 139.7563,
+    buy: "職場から近いので、お土産は省略しました", items: [] },
+  { id: "tokushima", area: "徳島", venue: "アスティとくしま", city: "徳島市山城町", date: "2026-10-23", lat: 34.0567, lon: 134.5560,
+    buy: "徳島駅ビル（クレメントプラザ）の地下",
+    items: [
+      { k: "potelet", name: "鳴門金時のお菓子（ポテレットなど）", q: "鳴門金時 ポテレット", tags: ["配る"] },
+      { k: "sudachi", name: "すだちのお菓子・すだちゼリー", q: "すだち ゼリー 徳島 お土産", tags: ["配る"] },
+      { k: "kinchou", name: "金長まんじゅう", tags: ["配る"] },
+      { k: "wasanbon", name: "和三盆の干菓子", q: "阿波和三盆 干菓子", tags: ["ちょっと良い"], note: "和三盆は徳島の高級なお砂糖" },
+      { k: "saoshika", name: "小男鹿（さおしか）", tags: ["ちょっと良い"] },
+      { k: "kamikatsu", name: "上勝晩茶", q: "上勝晩茶 阿波晩茶", tags: ["話のネタ"], note: "上勝町はごみを45種類に分けるゼロ・ウェイストの町。売り場は現地で探す" }
+    ] },
+  { id: "hiroshima", area: "広島", venue: "広島県情報プラザ", city: "広島市中区千田町", date: "2026-11-02", lat: 34.3810, lon: 132.4560,
+    buy: "広島駅「ekie（エキエ）」",
+    items: [
+      { k: "namamomiji", name: "生もみじ（にしき堂）", tags: ["配る"] },
+      { k: "lemon", name: "瀬戸田レモンのお菓子", q: "瀬戸田レモン お菓子 広島 お土産", tags: ["配る"] },
+      { k: "shakushi", name: "杓子せんべい（やまだ屋）", tags: ["配る"] },
+      { k: "touyouka", name: "桐葉菓（やまだ屋）", tags: ["ちょっと良い"] },
+      { k: "kakishoyu", name: "かき醤油（アサムラサキ）", tags: ["自分用"] }
+    ] },
+  { id: "sapporo", area: "札幌", venue: "札幌駅前ビジネススペース", city: "札幌市北区", date: "2026-11-11", lat: 43.0680, lon: 141.3508,
+    buy: "札幌駅、または新千歳空港（空港のほうが品ぞろえが多い）",
+    items: [
+      { k: "shiroi", name: "白い恋人", tags: ["配る"] },
+      { k: "marusei", name: "マルセイバターサンド（六花亭）", tags: ["配る"] },
+      { k: "jagapokkuru", name: "じゃがポックル", tags: ["自分用"] },
+      { k: "royce", name: "ロイズの生チョコレート", tags: ["自分用", "要冷蔵"] }
+    ], note: "冬の札幌は雪で飛行機が遅れることがあるので、空港で買う時間は多めに" },
+  { id: "ishikawa", area: "金沢", venue: "石川県地場産業振興センター", city: "金沢市鞍月", date: "2026-11-24", lat: 36.5935, lon: 136.6260,
+    buy: "金沢駅「あんと」（会場には一般向けの売店はなさそう）",
+    items: [
+      { k: "kinpaku", name: "金箔を使ったお菓子", q: "金箔 お菓子 金沢 お土産", tags: ["配る"] },
+      { k: "boucha", name: "加賀棒茶（ほうじ茶）", q: "加賀棒茶", tags: ["配る"] },
+      { k: "okiagari", name: "加賀八幡起上もなか（金沢 うら田）", tags: ["ちょっと良い"], note: "だるまの形のもなか" },
+      { k: "jizake", name: "石川の地酒", q: "石川 地酒 金沢 お土産", tags: ["自分用"], note: "駅の「金沢地酒蔵」で試飲できる" }
+    ] },
+  { id: "sendai", area: "仙台", venue: "宮城県建設業会館", city: "仙台市青葉区", date: "2026-12-01", lat: 38.2660, lon: 140.8650,
+    buy: "仙台駅「おみやげ処せんだい」",
+    items: [
+      { k: "haginotsuki", name: "萩の月", tags: ["配る"] },
+      { k: "kikufuku", name: "喜久福（生クリーム大福）", q: "喜久福 仙台", tags: ["自分用", "要冷凍"], note: "保冷バッグに入れてもらう" },
+      { k: "gyutan", name: "牛たんジャーキー", tags: ["自分用"] },
+      { k: "sasakama", name: "笹かまぼこ", tags: ["自分用", "要冷蔵"] }
+    ] },
+  { id: "osaka", area: "大阪", venue: "大阪商工会議所", city: "大阪市中央区", date: "2026-12-08", lat: 34.6830, lon: 135.5145,
+    buy: "新大阪駅・大阪駅",
+    items: [
+      { k: "petitbanana", name: "大阪プチバナナ", tags: ["配る"] },
+      { k: "rikuro", name: "りくろーおじさんのチーズケーキ", tags: ["自分用"], note: "当日中に食べるのがおすすめ" },
+      { k: "horai", name: "551蓬莱の豚まん", tags: ["自分用", "要冷蔵"] }
+    ] },
+  { id: "aichi", area: "名古屋", venue: "ウインクあいち", city: "名古屋駅から徒歩5分", date: "2026-12-14", lat: 35.1730, lon: 136.8860,
+    buy: "名古屋駅の地下街・タカシマヤ・名鉄百貨店の地下",
+    items: [
+      { k: "yukari", name: "ゆかり（坂角総本舗）", tags: ["配る"], note: "海老せんべい" },
+      { k: "uirobar", name: "ウイロバー（大須ういろ）", tags: ["配る"] },
+      { k: "ogura", name: "小倉トーストラングドシャ", tags: ["配る"] },
+      { k: "misen", name: "味仙の台湾ラーメン", tags: ["自分用"], note: "日持ちする" }
+    ] },
+  { id: "okinawa", area: "沖縄", venue: "沖縄県産業支援センター", city: "那覇市小禄（ゆいレール小禄駅）", date: "2027-01-29", lat: 26.1960, lon: 127.6650,
+    buy: "那覇空港 2階の出発階",
+    items: [
+      { k: "beniimo", name: "紅いもタルト", tags: ["配る"] },
+      { k: "yukishio", name: "雪塩ちんすこう", tags: ["配る"] },
+      { k: "kokuto", name: "石垣島の黒糖チョコレート（ロイズ）", tags: ["配る"], note: "個包装" },
+      { k: "orion", name: "オリオンビール", q: "オリオンビール 缶", tags: ["自分用"], note: "重いので配送も考える" }
+    ] }
+];
+const WEEK = ["日", "月", "火", "水", "木", "金", "土"];
+const HOW = { gps: "撮影場所から", date: "撮影日から", manual: "手で選択" };
+
+const state = { mode: "", ready: false, canUpload: false, incoming: null, photos: [], items: {}, pending: [], showCopy: false, db: null, assets: null, canWrite: true, openId: null, targetPlace: null };
+const $ = (id) => document.getElementById(id);
+
+function ymdParts(s) { const [y, m, d] = s.split("-").map(Number); return { y, m, d }; }
+function dayNum(y, m, d) { return Math.round(Date.UTC(y, m - 1, d) / 86400000); }
+function todayNum() { const t = new Date(); return dayNum(t.getFullYear(), t.getMonth() + 1, t.getDate()); }
+function placeDay(p) { const { y, m, d } = ymdParts(p.date); return dayNum(y, m, d); }
+function fmtDate(p) {
+  const { y, m, d } = ymdParts(p.date);
+  const w = WEEK[new Date(y, m - 1, d).getDay()];
+  const t = new Date();
+  return (y !== t.getFullYear() ? y + "年" : "") + m + "月" + d + "日（" + w + "）";
+}
+function nextPlace() { const t = todayNum(); return PLACES.find((p) => placeDay(p) >= t) || null; }
+function placeById(id) { return PLACES.find((p) => p.id === id) || null; }
+function el(tag, attrs, ...kids) {
+  const n = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs || {})) {
+    if (v == null || v === false) continue;
+    if (k === "class") n.className = v;
+    else if (k.startsWith("on")) n.addEventListener(k.slice(2), v);
+    else if (k === "text") n.textContent = v;
+    else n.setAttribute(k, v === true ? "" : v);
+  }
+  for (const c of kids.flat()) if (c != null) n.append(c);
+  return n;
+}
+function toast(msg) {
+  const t = $("toast"); t.textContent = msg; t.hidden = false;
+  clearTimeout(toast.timer); toast.timer = setTimeout(() => (t.hidden = true), 3200);
+}
+function imageSearchUrl(p, it) {
+  const q = it.q || it.name.replace(/[（）「」]/g, " ").trim() + " " + p.area;
+  return "https://www.google.com/search?tbm=isch&q=" + encodeURIComponent(q);
+}
+function photoUrl(ph) { return ph.localUrl || "/_blob/" + ph.asset; }
+function shotLabel(ph) {
+  if (!ph.takenAt) return "撮影日不明";
+  const [d] = ph.takenAt.split("T"); const { m, d: dd } = ymdParts(d);
+  return m + "/" + dd + " 撮影";
+}
+
+/* ---------- 描画 ---------- */
+function itemKey(p, it) { return p.id + "-" + it.k; }
+function itemState(p, it) { return state.items[itemKey(p, it)] || {}; }
+
+function render() {
+  // 入力中のメモ欄は、相手の更新で描き直しても続けて書けるようにする
+  const fa = document.activeElement;
+  const keep = fa && fa.id && fa.id.startsWith("n-") ? { id: fa.id, value: fa.value, s: fa.selectionStart, e: fa.selectionEnd } : null;
+  renderAll();
+  if (keep) {
+    const n = document.getElementById(keep.id);
+    if (n) { n.value = keep.value; n.focus(); try { n.setSelectionRange(keep.s, keep.e); } catch (e) {} }
+  }
+}
+
+function renderWish(t) {
+  const box = $("wish"); box.replaceChildren();
+  const groups = PLACES.map((p) => ({ p, list: p.items.filter((it) => itemState(p, it).req) })).filter((g) => g.list.length);
+  const all = groups.flatMap((g) => g.list.map((it) => itemState(g.p, it)));
+  const got = all.filter((s) => s.done).length;
+  const local = state.mode === "local";
+  const shareBtn = groups.length && local ? el("button", { class: "btn small", type: "button", onclick: shareWish }, "リンクで送る") : null;
+  const copyBtn = groups.length ? el("button", { class: "btn ghost small", type: "button", onclick: copyWish }, local ? "文章をコピー" : "お願いリストをコピー") : null;
+  box.append(el("div", { class: "bar" },
+    el("div", {}, el("h2", { text: "買ってきてリスト" }), all.length ? el("div", { class: "sum", text: "お願い " + all.length + "件・買った " + got + "件" }) : null),
+    el("div", { class: "uploadbar" }, shareBtn, copyBtn)));
+  if (state.incoming) {
+    const inc = Object.values(state.incoming);
+    box.append(el("div", { class: "notice" },
+      el("div", { text: "送られてきたリストがあります（お願い " + inc.filter((s) => s.req).length + "件・買った " + inc.filter((s) => s.done).length + "件）。取り込むと、この端末の「買ってきて」「買った」の印が、送られてきた内容に置きかわります。" }),
+      el("div", { class: "uploadbar", style: "margin-top:8px" },
+        el("button", { class: "btn small", type: "button", onclick: importIncoming }, "取り込む"),
+        el("button", { class: "btn ghost small", type: "button", onclick: () => { state.incoming = null; clearHash(); render(); } }, "取り込まない"))));
+  }
+  if (!groups.length) {
+    box.append(el("p", { class: "how", text: local
+      ? "下の名物の「買ってきて」を押すと、ここに集まります。「リンクで送る」でLINEなどから出張に行く人に送ってください。買ってきた人は、そのリンクを開いて「買った」を押し、同じように送り返します。"
+      : "下の名物の「買ってきて」を押すと、ここに集まります。出張に行く人は、買ったら「買った」を押してください。お互いの画面に同じ印が出ます。" }));
+    return;
+  }
+  for (const g of groups) {
+    box.append(el("div", { class: "wgroup" },
+      el("h3", {}, el("a", { href: "#" + g.p.id, text: g.p.area }), el("span", { text: fmtDate(g.p) + (placeDay(g.p) < t ? "・行った" : "") })),
+      el("ul", { class: "wlist" }, g.list.map((it) => {
+        const s = itemState(g.p, it);
+        return el("li", {}, el("span", { class: "st " + (s.done ? "ok" : "todo"), text: s.done ? "買った" : "まだ" }),
+          el("span", { text: it.name }), s.note ? el("span", { class: "nt", text: s.note }) : null);
+      }))));
+  }
+  if (state.showCopy) {
+    const ta = el("textarea", { class: "copybox", id: "copybox", readonly: true, "aria-label": "お願いリストの文章" });
+    ta.value = wishText();
+    box.append(el("p", { class: "how", text: "コピーできなかったので、下の文章を長押し（またはドラッグ）して選び、コピーしてください。" }), ta);
+  }
+}
+function wishText() {
+  const lines = ["【出張のお土産 お願いリスト】"];
+  for (const p of PLACES) {
+    const list = p.items.filter((it) => itemState(p, it).req);
+    if (!list.length) continue;
+    lines.push("", "■ " + p.area + " " + fmtDate(p), "　買う場所：" + p.buy);
+    for (const it of list) {
+      const s = itemState(p, it);
+      lines.push("・" + it.name + (s.note ? "（" + s.note + "）" : "") + (s.done ? " … 買った" : ""));
+    }
+  }
+  return lines.join("\n");
+}
+/* ---------- リンクで送る（GitHub Pages など、Claudeの外で開いたとき） ---------- */
+function shareUrl() {
+  const data = {};
+  for (const [k, s] of Object.entries(state.items)) if (s.req || s.done) data[k] = [s.req ? 1 : 0, s.done ? 1 : 0, s.note || ""];
+  return location.href.split("#")[0] + "#list=" + encodeURIComponent(JSON.stringify(data));
+}
+function readIncoming() {
+  const h = location.hash;
+  if (!h.startsWith("#list=")) return null;
+  try {
+    const data = JSON.parse(decodeURIComponent(h.slice(6)));
+    const out = {};
+    for (const [k, v] of Object.entries(data)) if (Array.isArray(v)) out[k] = { req: !!v[0], done: !!v[1], note: String(v[2] || "").slice(0, 60) };
+    return out;
+  } catch (e) { return null; }
+}
+function clearHash() { try { history.replaceState(null, "", location.href.split("#")[0]); } catch (e) {} }
+function importIncoming() {
+  state.items = state.incoming; state.incoming = null;
+  saveLocalItems(); clearHash(); render();
+  toast("送られてきたリストを取り込みました");
+}
+async function shareWish() {
+  const url = shareUrl();
+  const text = wishText() + "\n\nリンクを開くと印が入ります：";
+  if (navigator.share) {
+    try { await navigator.share({ title: "出張おみやげ帳", text, url }); return; }
+    catch (e) { if (e && e.name === "AbortError") return; }
+  }
+  try { await navigator.clipboard.writeText(text + "\n" + url); toast("リンクをコピーしました。LINEやメールに貼り付けてください"); }
+  catch (e) { state.showCopy = true; render(); const ta = $("copybox"); if (ta) { ta.value = text + "\n" + url; ta.focus(); ta.select(); } }
+}
+async function copyWish() {
+  const text = wishText();
+  try { await navigator.clipboard.writeText(text); state.showCopy = false; render(); toast("コピーしました。LINEやメールに貼り付けられます"); }
+  catch (e) { state.showCopy = true; render(); const ta = $("copybox"); if (ta) { ta.focus(); ta.select(); } }
+}
+
+function renderAll() {
+  const t = todayNum();
+  const np = nextPlace();
+  renderWish(t);
+  // 次の出張
+  const nx = $("next"); nx.replaceChildren();
+  if (np) {
+    const days = placeDay(np) - t;
+    nx.append(
+      el("div", {}, el("div", { class: "lbl", text: "つぎの出張" }), el("div", { class: "where", text: np.area + "　" + np.venue }), el("div", { class: "when", text: fmtDate(np) })),
+      el("div", { class: "days" }, days === 0 ? "きょう" : "あと" + days, days === 0 ? null : el("small", { text: "日" }))
+    );
+  } else {
+    nx.append(el("div", { class: "where", text: "すべての出張が終わりました。おつかれさまでした" }));
+  }
+  // ジャンプ
+  const jp = $("jump"); jp.replaceChildren();
+  for (const p of PLACES) {
+    const past = placeDay(p) < t;
+    const { m, d } = ymdParts(p.date);
+    const open = p.items.filter((it) => { const s = itemState(p, it); return s.req && !s.done; }).length;
+    jp.append(el("li", {}, el("a", { href: "#" + p.id, class: (past ? "past " : "") + (np && np.id === p.id ? "isnext" : "") },
+      p.area, el("span", { class: "d", text: m + "/" + d }), open ? el("span", { class: "n", title: "まだ買っていないお願い", text: String(open) }) : null)));
+  }
+  // 未分類
+  const unsorted = state.photos.filter((ph) => !placeById(ph.place));
+  const pendUnsorted = state.pending.filter((x) => !x.place);
+  $("tray").hidden = unsorted.length + pendUnsorted.length === 0;
+  const tl = $("traylist"); tl.replaceChildren();
+  for (const ph of unsorted) {
+    const sel = el("select", { id: "move-" + ph.id, "aria-label": "出張先を選ぶ", onchange: (e) => movePhoto(ph, e.target.value, "manual") },
+      el("option", { value: "", text: "出張先を選ぶ…" }), PLACES.map((p) => el("option", { value: p.id, text: p.area + "（" + p.date.slice(5).replace("-", "/") + "）" })));
+    if (!state.canWrite) sel.disabled = true;
+    tl.append(el("div", { class: "trayitem" }, thumb(ph), sel));
+  }
+  for (const x of pendUnsorted) tl.append(pendingThumb(x));
+  // 各地
+  const box = $("places"); box.replaceChildren();
+  for (const p of PLACES) box.append(placeCard(p, t, np));
+  if (state.openId) openViewer(state.openId, true);
+}
+
+function thumb(ph) {
+  const b = el("button", { class: "thumb", type: "button", "aria-label": "写真を開く", onclick: () => openViewer(ph.id) },
+    el("img", { src: photoUrl(ph), alt: ph.memo || "出張先の写真", loading: "lazy" }),
+    el("span", { class: "cap", text: ph.memo || shotLabel(ph) }));
+  b.querySelector("img").addEventListener("error", (e) => { e.target.replaceWith(el("span", { text: "表示できません" })); }, { once: true });
+  return b;
+}
+function pendingThumb(x) {
+  return el("div", { class: "thumb pending" }, x.preview ? el("img", { src: x.preview, alt: "" }) : null, el("span", { text: "保存中…" }));
+}
+
+function placeCard(p, t, np) {
+  const day = placeDay(p);
+  const photos = state.photos.filter((ph) => ph.place === p.id).sort((a, b) => (a.takenAt || a.addedAt || "").localeCompare(b.takenAt || b.addedAt || ""));
+  const pend = state.pending.filter((x) => x.place === p.id);
+  const isNext = np && np.id === p.id;
+  const pill = day < t ? el("span", { class: "pill past", text: "行った" })
+    : isNext ? el("span", { class: "pill next", text: day === t ? "きょう" : "つぎ・あと" + (day - t) + "日" })
+    : el("span", { class: "pill later", text: "あと" + (day - t) + "日" });
+  const { m, d } = ymdParts(p.date);
+  const stamp = el("div", { class: "stamp" + (photos.length ? " inked" : ""), "aria-label": photos.length ? "写真あり" : "まだ写真なし" },
+    el("span", {}, p.area, el("small", { text: m + "." + String(d).padStart(2, "0") })));
+  const done = p.items.filter((it) => itemState(p, it).done).length;
+  const asked = p.items.filter((it) => itemState(p, it).req).length;
+  const ro = !state.ready || !state.canWrite;
+
+  const items = p.items.length ? el("ul", { class: "items" }, p.items.map((it) => {
+    const key = itemKey(p, it);
+    const s = itemState(p, it);
+    const want = el("button", { class: "tog want", type: "button", "aria-pressed": s.req ? "true" : "false", disabled: ro,
+      onclick: () => writeItem(key, { req: !s.req }) }, s.req ? "♥ 買ってきて" : "♡ 買ってきて");
+    const got = el("button", { class: "tog got", type: "button", "aria-pressed": s.done ? "true" : "false", disabled: ro,
+      onclick: () => writeItem(key, { done: !s.done }) }, s.done ? "✓ 買った" : "買った");
+    let noteInput = null;
+    if (s.req) {
+      noteInput = el("input", { class: "reqnote", type: "text", id: "n-" + key, maxlength: "60", disabled: ro,
+        placeholder: "数・予算など（例：2箱、2,000円まで）", "aria-label": it.name + " のお願いのメモ",
+        onchange: (e) => { if ((s.note || "") !== e.target.value) writeItem(key, { note: e.target.value }); },
+        onkeydown: (e) => { if (e.key === "Enter") e.target.blur(); } });
+      noteInput.value = s.note || "";
+    }
+    return el("li", { class: (s.req ? "req " : "") + (s.done ? "done" : "") },
+      el("div", { class: "row1" },
+        el("div", { class: "info" },
+          el("a", { class: "name", href: imageSearchUrl(p, it), target: "_blank", rel: "noopener", title: it.name + " の画像を検索" },
+            it.name, el("span", { class: "ext", "aria-hidden": "true", text: "画像 ↗" })),
+          el("span", { class: "tags" }, it.tags.map((tg) => el("span", { class: "tag" + (tg.startsWith("要") ? " cold" : tg === "自分用" ? " self" : ""), text: tg }))),
+          it.note ? el("span", { class: "note", text: it.note }) : null),
+        el("div", { class: "acts" }, want, got)),
+      noteInput);
+  })) : null;
+
+  const addBtn = state.canUpload && state.canWrite ? el("button", { class: "btn ghost small", type: "button", onclick: () => pickFor(p.id) }, "＋ この場所に追加") : null;
+  const grid = photos.length + pend.length
+    ? el("div", { class: "grid" }, photos.map(thumb), pend.map(pendingThumb))
+    : el("p", { class: "empty", text: "まだ写真はありません。お土産や会場の写真を追加すると、ここに並びます。" });
+
+  return el("article", { class: "place" + (isNext ? " isnext" : ""), id: p.id },
+    el("div", { class: "phead" }, stamp,
+      el("div", { class: "ptitle" },
+        el("div", { class: "row" }, el("h2", { text: p.area }), el("span", { class: "date", text: fmtDate(p) }), pill),
+        el("div", { class: "venue", text: p.venue + "（" + p.city + "）" }))),
+    el("div", { class: "buy" }, el("b", { text: "買う場所" }), el("span", { text: p.buy })),
+    p.note ? el("div", { class: "notice", text: p.note }) : null,
+    items,
+    p.items.length ? el("div", { class: "count", text: "お願い " + asked + "・買った " + done + "（候補 " + p.items.length + "）" }) : null,
+    el("div", { class: "photos" }, el("div", { class: "bar" }, el("h3", { text: "写真 " + photos.length + "枚" }), addBtn), grid));
+}
+
+/* ---------- 写真の拡大と編集 ---------- */
+function openViewer(id, refresh) {
+  const ph = state.photos.find((x) => x.id === id);
+  const v = $("viewer");
+  if (!ph) { closeViewer(); return; }
+  if (refresh && !v.hidden && v.dataset.id === id) return;
+  state.openId = id; v.dataset.id = id;
+  const sel = el("select", { id: "v-place" }, el("option", { value: "", text: "（未分類）" }), PLACES.map((p) => el("option", { value: p.id, text: p.area + "　" + fmtDate(p) })));
+  sel.value = placeById(ph.place) ? ph.place : "";
+  const memo = el("textarea", { id: "v-memo", placeholder: "例：萩の月 6個入り 1,500円。職場に配った" });
+  memo.value = ph.memo || "";
+  const ro = !state.canWrite;
+  sel.disabled = ro; memo.disabled = ro;
+  const del = el("button", { class: "btn danger small", type: "button", onclick: (e) => {
+    if (!e.currentTarget.classList.contains("armed")) { e.currentTarget.classList.add("armed"); e.currentTarget.textContent = "もう一度押すと削除"; return; }
+    deletePhoto(ph);
+  } }, "写真を削除");
+  const save = el("button", { class: "btn small", type: "button", onclick: async () => {
+    const changes = {};
+    if ((ph.memo || "") !== memo.value) changes.memo = memo.value;
+    if ((placeById(ph.place) ? ph.place : "") !== sel.value) { changes.place = sel.value; changes.how = "manual"; }
+    if (Object.keys(changes).length) {
+      try { await updatePhoto(ph, changes); toast("保存しました"); }
+      catch (err) { toast("保存できませんでした。もう一度お試しください"); return; }
+    }
+    closeViewer();
+  } }, "保存して閉じる");
+  const p = placeById(ph.place);
+  v.replaceChildren(el("div", { class: "sheet" },
+    el("img", { src: photoUrl(ph), alt: ph.memo || "出張先の写真" }),
+    el("div", { class: "meta", text: shotLabel(ph) + "・" + (p ? p.area + "（" + (HOW[ph.how] || "手で選択") + "）" : "未分類") }),
+    el("label", { class: "field" }, "出張先", sel),
+    el("label", { class: "field" }, "メモ（買ったもの・値段・配った相手など）", memo),
+    el("div", { class: "acts" }, ro ? el("span") : del, el("div", {}, el("button", { class: "btn ghost small", type: "button", onclick: closeViewer }, "閉じる"), ro ? null : save))));
+  v.hidden = false;
+}
+function closeViewer() { const v = $("viewer"); v.hidden = true; v.replaceChildren(); state.openId = null; delete v.dataset.id; }
+$("viewer").addEventListener("click", (e) => { if (e.target.id === "viewer") closeViewer(); });
+document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !$("viewer").hidden) closeViewer(); });
+
+/* ---------- 保存 ----------
+   Claudeの中で開いたとき: db / assets（共有した人と同じものが見える）
+   Claudeの外（GitHub Pages など）で開いたとき: この端末の中（印は localStorage、写真は IndexedDB） */
+const LS_KEY = "shutcho-omiyage-items";
+function saveLocalItems() {
+  try { localStorage.setItem(LS_KEY, JSON.stringify(state.items)); }
+  catch (e) { toast("この端末に保存できませんでした"); }
+}
+function loadLocalItems() {
+  try { return JSON.parse(localStorage.getItem(LS_KEY) || "{}") || {}; } catch (e) { return {}; }
+}
+let idb = null;
+function openIdb() {
+  return new Promise((res, rej) => {
+    const r = indexedDB.open("shutcho-omiyage", 1);
+    r.onupgradeneeded = () => r.result.createObjectStore("photos", { keyPath: "id" });
+    r.onsuccess = () => res(r.result);
+    r.onerror = () => rej(r.error);
+  });
+}
+function idbDo(mode, fn) {
+  return new Promise((res, rej) => {
+    const tx = idb.transaction("photos", mode);
+    const r = fn(tx.objectStore("photos"));
+    tx.oncomplete = () => res(r && r.result);
+    tx.onerror = () => rej(tx.error);
+    tx.onabort = () => rej(tx.error);
+  });
+}
+function withoutUrl(ph) { const o = Object.assign({}, ph); delete o.localUrl; return o; }
+
+async function savePhoto(blob, fields) {
+  if (state.mode === "local") {
+    const rec = Object.assign({ id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6), blob }, fields);
+    await idbDo("readwrite", (s) => s.put(rec));
+    state.photos = state.photos.concat(Object.assign({}, rec, { localUrl: URL.createObjectURL(blob) }));
+    return;
+  }
+  const up = await state.assets.upload(blob, { type: "image/jpeg" });
+  await state.db.collection("photos").doc().set(Object.assign({ asset: up.id }, fields));
+}
+async function updatePhoto(ph, changes) {
+  if (state.mode === "local") {
+    const next = Object.assign({}, ph, changes);
+    await idbDo("readwrite", (s) => s.put(withoutUrl(next)));
+    state.photos = state.photos.map((x) => (x.id === ph.id ? next : x));
+    render();
+    return;
+  }
+  await state.db.collection("photos").doc(ph.id).update(changes);
+}
+async function removePhoto(ph) {
+  if (state.mode === "local") {
+    await idbDo("readwrite", (s) => s.delete(ph.id));
+    state.photos = state.photos.filter((x) => x.id !== ph.id);
+    if (ph.localUrl) URL.revokeObjectURL(ph.localUrl);
+    render();
+    return;
+  }
+  await state.db.collection("photos").doc(ph.id).delete();
+  try { await state.assets.delete(ph.asset); } catch (e) { /* 表から外したので表示には影響しない */ }
+}
+
+// 名物ごとに1つの記録（items/<場所>-<名物>）。お願いする人と買う人が別の名物を同時に押しても上書きし合わない
+const itemWrites = {};
+function writeItem(key, patch) {
+  const had = !!state.items[key];
+  state.items = Object.assign({}, state.items, { [key]: Object.assign({ req: false, note: "", done: false }, state.items[key], patch) });
+  render();
+  if (state.mode === "local") { saveLocalItems(); return; }
+  const ref = state.db.collection("items").doc(key);
+  itemWrites[key] = (itemWrites[key] || Promise.resolve()).then(async () => {
+    if (had) { await ref.update(patch); return; }
+    const cur = await ref.get();
+    if (cur.exists) await ref.update(patch);
+    else await ref.set(Object.assign({ req: false, note: "", done: false }, patch));
+  }).catch((err) => {
+    if (err && err.code === "invalid_argument") { state.canWrite = false; render(); }
+    toast("印を保存できませんでした。もう一度お試しください");
+  });
+}
+async function movePhoto(ph, place, how) {
+  if (!place) return;
+  try { await updatePhoto(ph, { place, how }); toast(placeById(place).area + "に移しました"); }
+  catch (e) { toast("移せませんでした。もう一度お試しください"); }
+}
+async function deletePhoto(ph) {
+  try {
+    closeViewer();
+    await removePhoto(ph);
+    toast("写真を削除しました");
+  } catch (e) { toast("削除できませんでした。もう一度お試しください"); }
+}
+
+/* ---------- 写真の読み取り（撮影日時・撮影場所） ---------- */
+async function readExif(file) {
+  try {
+    const buf = await file.slice(0, 256 * 1024).arrayBuffer();
+    const v = new DataView(buf);
+    if (v.getUint16(0) !== 0xFFD8) return {};
+    let off = 2;
+    while (off + 4 < v.byteLength) {
+      const marker = v.getUint16(off); const len = v.getUint16(off + 2);
+      if (marker === 0xFFE1 && v.getUint32(off + 4) === 0x45786966) return parseTiff(v, off + 10);
+      if ((marker & 0xFF00) !== 0xFF00) break;
+      off += 2 + len;
+    }
+  } catch (e) {}
+  return {};
+}
+function parseTiff(v, start) {
+  const le = v.getUint16(start) === 0x4949;
+  const u16 = (o) => v.getUint16(start + o, le), u32 = (o) => v.getUint32(start + o, le);
+  const entries = (ifd) => { const n = u16(ifd); const out = {}; for (let i = 0; i < n; i++) { const e = ifd + 2 + i * 12; out[u16(e)] = { type: u16(e + 2), count: u32(e + 4), at: e + 8 }; } return out; };
+  const str = (en) => { const o = en.count > 4 ? u32(en.at) : en.at; let s = ""; for (let i = 0; i < en.count - 1; i++) s += String.fromCharCode(v.getUint8(start + o + i)); return s; };
+  const rats = (en) => { const o = u32(en.at); const a = []; for (let i = 0; i < en.count; i++) a.push(u32(o + i * 8) / (u32(o + i * 8 + 4) || 1)); return a; };
+  const res = {};
+  const ifd0 = entries(u32(4));
+  if (ifd0[0x8769]) { const ex = entries(u32(ifd0[0x8769].at)); const dt = ex[0x9003] || ex[0x9004]; if (dt) res.date = str(dt); }
+  if (!res.date && ifd0[0x0132]) res.date = str(ifd0[0x0132]);
+  if (ifd0[0x8825]) {
+    const g = entries(u32(ifd0[0x8825].at));
+    if (g[2] && g[4]) {
+      const dms = (a) => a[0] + a[1] / 60 + a[2] / 3600;
+      let lat = dms(rats(g[2])), lon = dms(rats(g[4]));
+      if (g[1] && str({ count: 2, at: g[1].at }) === "S") lat = -lat;
+      if (g[3] && str({ count: 2, at: g[3].at }) === "W") lon = -lon;
+      if (lat || lon) { res.lat = lat; res.lon = lon; }
+    }
+  }
+  return res;
+}
+function km(aLat, aLon, bLat, bLon) {
+  const r = Math.PI / 180, dLat = (bLat - aLat) * r, dLon = (bLon - aLon) * r;
+  const h = Math.sin(dLat / 2) ** 2 + Math.cos(aLat * r) * Math.cos(bLat * r) * Math.sin(dLon / 2) ** 2;
+  return 12742 * Math.asin(Math.sqrt(h));
+}
+function decide(meta) {
+  if (meta.lat != null) {
+    let best = null, bestKm = Infinity;
+    for (const p of PLACES) { const k = km(meta.lat, meta.lon, p.lat, p.lon); if (k < bestKm) { bestKm = k; best = p; } }
+    if (best && bestKm <= 80) return { place: best.id, how: "gps" };
+  }
+  if (meta.taken) {
+    const [y, m, d] = meta.taken.slice(0, 10).split("-").map(Number);
+    const n = dayNum(y, m, d);
+    const hit = PLACES.find((p) => Math.abs(placeDay(p) - n) <= 1);
+    if (hit) return { place: hit.id, how: "date" };
+  }
+  return { place: "", how: "manual" };
+}
+function exifToIso(s) {
+  const m = /^(\d{4}):(\d{2}):(\d{2})[ T](\d{2}):(\d{2})/.exec(s || "");
+  return m ? m[1] + "-" + m[2] + "-" + m[3] + "T" + m[4] + ":" + m[5] : null;
+}
+async function shrink(file) {
+  const url = URL.createObjectURL(file);
+  try {
+    const img = new Image(); img.src = url; await img.decode();
+    const max = 1600, s = Math.min(1, max / Math.max(img.naturalWidth, img.naturalHeight));
+    const c = document.createElement("canvas"); c.width = Math.round(img.naturalWidth * s); c.height = Math.round(img.naturalHeight * s);
+    c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
+    return await new Promise((res, rej) => c.toBlob((b) => (b ? res(b) : rej(new Error("toBlob"))), "image/jpeg", 0.85));
+  } finally { URL.revokeObjectURL(url); }
+}
+
+async function addFiles(files, fixedPlace) {
+  for (const file of files) {
+    const meta = await readExif(file);
+    const taken = exifToIso(meta.date);
+    const target = fixedPlace ? { place: fixedPlace, how: "manual" } : decide({ lat: meta.lat, lon: meta.lon, taken });
+    const pend = { id: Math.random().toString(36).slice(2), place: target.place, preview: null };
+    let blob;
+    try { blob = await shrink(file); pend.preview = URL.createObjectURL(blob); }
+    catch (e) { toast("この写真は読み込めませんでした（JPEGかPNGでお試しください）"); continue; }
+    state.pending.push(pend); render();
+    try {
+      await savePhoto(blob, { place: target.place, how: target.how, takenAt: taken, memo: "", addedAt: new Date().toISOString() });
+      const p = placeById(target.place);
+      toast(p ? p.area + "に入れました（" + HOW[target.how] + "）" : "撮影場所がわからないので「場所を選ぶ」に入れました");
+    } catch (e) {
+      const code = e && e.code;
+      toast(code === "too_large" ? "写真が大きすぎて保存できませんでした"
+        : code === "quota_or_state" || code === "quota_exceeded" ? "保存できる量がいっぱいです。いらない写真を消してください"
+        : "写真を保存できませんでした。もう一度お試しください");
+    } finally {
+      state.pending = state.pending.filter((x) => x !== pend);
+      URL.revokeObjectURL(pend.preview);
+      render();
+    }
+  }
+}
+function pickFor(placeId) { state.targetPlace = placeId; $("filePlace").value = ""; $("filePlace").click(); }
+$("addAuto").addEventListener("click", () => { $("fileAuto").value = ""; $("fileAuto").click(); });
+$("fileAuto").addEventListener("change", (e) => { const f = [...e.target.files]; if (f.length) addFiles(f, null); });
+$("filePlace").addEventListener("change", (e) => { const f = [...e.target.files]; if (f.length) addFiles(f, state.targetPlace); });
+
+window.addEventListener("hashchange", () => {
+  if (state.mode !== "local") return;
+  const inc = readIncoming();
+  if (inc) { state.incoming = inc; render(); $("wish").scrollIntoView(); }
+});
+
+/* ---------- 起動 ---------- */
+render();
+(async () => {
+  const st = $("status");
+  const db = window.claude && window.claude.use ? await window.claude.use("db") : null;
+  if (!db) {
+    // Claudeの外：この端末に保存し、相手とはリンクでやりとりする
+    state.mode = "local"; state.ready = true;
+    state.items = loadLocalItems();
+    state.incoming = readIncoming();
+    $("footShare").textContent = "「買ってきて」「買った」の印と写真は、この端末の中だけに保存されます。相手に伝えるときは「リンクで送る」を使ってください。";
+    try {
+      idb = await openIdb();
+      const rows = await idbDo("readonly", (s) => s.getAll());
+      state.photos = (rows || []).map((r) => Object.assign({}, r, { localUrl: URL.createObjectURL(r.blob) }));
+      state.canUpload = true;
+      $("addAuto").hidden = false;
+      st.hidden = true;
+    } catch (e) {
+      st.textContent = "この端末では写真を保存できません（プライベートブラウズなど）。お願いの印は使えます。";
+      $("addHint").hidden = true;
+    }
+    render();
+    if (state.incoming) $("wish").scrollIntoView();
+    return;
+  }
+  state.mode = "claude"; state.ready = true;
+  state.db = db;
+  const assets = await window.claude.use("assets");
+  state.assets = assets;
+  state.canUpload = !!assets;
+  if (assets) { $("addAuto").hidden = false; st.hidden = true; }
+  else { st.textContent = "写真の追加は、この帳面を編集できる人だけができます。写真と「買った」の印は見られます。"; $("addHint").hidden = true; }
+  db.collection("photos").onSnapshot((snap) => {
+    state.photos = snap.docs.map((d) => Object.assign({ id: d.id }, d.data()));
+    render();
+  }, () => { st.hidden = false; st.className = "notice warn"; st.textContent = "写真の一覧を読み込めませんでした。ページを開き直してください。"; });
+  db.collection("items").onSnapshot((snap) => {
+    const next = {};
+    for (const d of snap.docs) next[d.id] = d.data();
+    state.items = next;
+    render();
+  }, () => { st.hidden = false; st.className = "notice warn"; st.textContent = "お願いの印を読み込めませんでした。ページを開き直してください。"; });
+  render();
+})();
+</script>
+</body>
+</html>
