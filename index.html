@@ -187,6 +187,7 @@ button { cursor: pointer; }
 .items .note { display: block; font-size: 12px; color: var(--muted); }
 .items .tags { display: inline-flex; gap: 4px; margin-left: 6px; vertical-align: 1px; }
 .tag { font-size: 10px; font-weight: 700; padding: 1px 6px; border-radius: 4px; background: var(--ai-soft); color: var(--ai); white-space: nowrap; }
+.tag.nomail { background: var(--shu); color: var(--surface); }
 .tag.cold { background: var(--shu-soft); color: var(--shu); }
 .tag.self { background: var(--ok-soft); color: var(--ok); }
 .items li.done .name { text-decoration: line-through; color: var(--muted); }
@@ -270,7 +271,7 @@ button { cursor: pointer; }
   <main class="places" id="places"></main>
 
   <footer class="foot">
-    <span>お土産の候補は 2026-10-17 に調べた内容です。値段や売り場は変わることがあるので、出発前にお店のサイトで確かめてください。</span>
+    <span>お土産の候補は、通販で買えないものを中心に 2026-10-17 に調べました。「通販なし」は記事に通販がないと書かれていたもの、「店舗限定」「地域限定」はその店・地域だけで売っていて、調べた範囲で通販が見つからなかったものです。限定品は入れ替わりが早いので、出発前にお店のサイトで確かめてください。</span>
     <span>名物の名前を押すと、その名物の画像検索（Google）が新しいタブで開きます。</span>
     <span id="footShare">写真・「買ってきて」・「買った」の印は、この帳面を共有した人と同じものが見えます。</span>
   </footer>
@@ -295,74 +296,69 @@ const FIREBASE_CONFIG = {
 const FIREBASE_SDK = "https://www.gstatic.com/firebasejs/10.12.2/";
 const ROOM_KEY = "shutcho-omiyage-room";
 
+// 2026-10-17 調べ。「通販なし」= 記事に通販がないと書かれていたもの。
+// 「店舗限定」「地域限定」= その店・地域だけで売っていて、調べた範囲で通販が見つからなかったもの
 const PLACES = [
   { id: "tokyo", area: "東京", venue: "日本教育会館", city: "千代田区一ツ橋", date: "2026-10-06", lat: 35.6946, lon: 139.7563,
     buy: "職場から近いので、お土産は省略しました", items: [] },
   { id: "tokushima", area: "徳島", venue: "アスティとくしま", city: "徳島市山城町", date: "2026-10-23", lat: 34.0567, lon: 134.5560,
-    buy: "徳島駅ビル（クレメントプラザ）の地下",
+    buy: "徳島駅ビル（クレメントプラザ）地下の「のもん徳島」「おみやげ一番館」",
     items: [
-      { k: "potelet", name: "鳴門金時のお菓子（ポテレットなど）", q: "鳴門金時 ポテレット", tags: ["配る"] },
-      { k: "sudachi", name: "すだちのお菓子・すだちゼリー", q: "すだち ゼリー 徳島 お土産", tags: ["配る"] },
-      { k: "kinchou", name: "金長まんじゅう", tags: ["配る"] },
-      { k: "wasanbon", name: "和三盆の干菓子", q: "阿波和三盆 干菓子", tags: ["ちょっと良い"], note: "和三盆は徳島の高級なお砂糖" },
-      { k: "saoshika", name: "小男鹿（さおしか）", tags: ["ちょっと良い"] },
-      { k: "kamikatsu", name: "上勝晩茶", q: "上勝晩茶 阿波晩茶", tags: ["話のネタ"], note: "上勝町はごみを45種類に分けるゼロ・ウェイストの町。売り場は現地で探す" }
-    ] },
+      { k: "kinnoshizuku", name: "金のしずく（鳴門金時芋の饅頭）", q: "金のしずく 徳島 饅頭", tags: ["通販なし", "配る"], note: "作る数が少なく、徳島駅・徳島空港など県内の一部の店だけ。日持ちは製造から90日という記事あり" },
+      { k: "kamikatsu", name: "上勝晩茶", q: "上勝晩茶 阿波晩茶", tags: ["話のネタ"], note: "上勝町はごみを45種類に分けるゼロ・ウェイストの町。通販で買える場合もある" }
+    ], note: "徳島は「通販なし」と確かめられた名物が少なめ。現地の売り場で「徳島限定」の札を探してみてください" },
   { id: "hiroshima", area: "広島", venue: "広島県情報プラザ", city: "広島市中区千田町", date: "2026-11-02", lat: 34.3810, lon: 132.4560,
-    buy: "広島駅「ekie（エキエ）」",
+    buy: "広島駅ビル「ミナモア」・駅の売店。長崎堂は本店だけ",
     items: [
-      { k: "namamomiji", name: "生もみじ（にしき堂）", tags: ["配る"] },
-      { k: "lemon", name: "瀬戸田レモンのお菓子", q: "瀬戸田レモン お菓子 広島 お土産", tags: ["配る"] },
-      { k: "shakushi", name: "杓子せんべい（やまだ屋）", tags: ["配る"] },
-      { k: "touyouka", name: "桐葉菓（やまだ屋）", tags: ["ちょっと良い"] },
-      { k: "kakishoyu", name: "かき醤油（アサムラサキ）", tags: ["自分用"] }
+      { k: "butterCake", name: "バターケーキ（長崎堂）", q: "長崎堂 バターケーキ 広島", tags: ["通販なし", "自分用"], note: "本店（中区中町、袋町電停の近く）だけ。9時開店で午前中に売り切れる日が多い。日・祝休み（11/2は月曜なので開いている）" },
+      { k: "minamoaMomiji", name: "ミナモア開業記念 もみじ饅頭詰合せ（にしき堂）", q: "にしき堂 ミナモア 開業記念 もみじ饅頭", tags: ["店舗限定", "配る"], note: "広島駅ビル「ミナモア」だけ" },
+      { k: "takumi", name: "かっぱえびせん匠海 瀬戸内レモン味", q: "かっぱえびせん 匠海 瀬戸内レモン", tags: ["地域限定", "配る"], note: "広島県内限定" },
+      { k: "kunugi", name: "バームクーヘン（櫟 くぬぎ）", q: "櫟 くぬぎ バームクーヘン 広島", tags: ["店舗限定", "ちょっと良い"], note: "お店は広島だけ" }
     ] },
   { id: "sapporo", area: "札幌", venue: "札幌駅前ビジネススペース", city: "札幌市北区", date: "2026-11-11", lat: 43.0680, lon: 141.3508,
-    buy: "札幌駅、または新千歳空港（空港のほうが品ぞろえが多い）",
+    buy: "大丸札幌（札幌駅すぐ）・新千歳空港",
     items: [
-      { k: "shiroi", name: "白い恋人", tags: ["配る"] },
-      { k: "marusei", name: "マルセイバターサンド（六花亭）", tags: ["配る"] },
-      { k: "jagapokkuru", name: "じゃがポックル", tags: ["自分用"] },
-      { k: "royce", name: "ロイズの生チョコレート", tags: ["自分用", "要冷蔵"] }
-    ], note: "冬の札幌は雪で飛行機が遅れることがあるので、空港で買う時間は多めに" },
+      { k: "namaNorthman", name: "生ノースマン（千秋庵）", q: "生ノースマン 千秋庵", tags: ["店舗限定", "要冷蔵"], note: "大丸札幌・新千歳空港・本店。生菓子なので早めに食べる" },
+      { k: "yakitateCheese", name: "焼きたて酪農チーズケーキ（札幌農学校）", q: "焼きたて酪農チーズケーキ 札幌農学校 新千歳空港", tags: ["店舗限定"], note: "新千歳空港のファクトリー店だけ。行列ができやすい" },
+      { k: "anVoyage", name: "あんボヤージュ！どらやき（石屋製菓）", q: "あんボヤージュ どらやき 石屋製菓", tags: ["店舗限定", "配る"], note: "新千歳空港店だけ" },
+      { k: "maaruBlancher", name: "まああるブランシェール（ルタオ）", q: "まああるブランシェール ルタオ 新千歳空港", tags: ["店舗限定", "ちょっと良い"], note: "新千歳空港店だけ" }
+    ], note: "空港限定が多いので、帰りの空港で時間をとってください。冬は雪で飛行機が遅れることもあります" },
   { id: "ishikawa", area: "金沢", venue: "石川県地場産業振興センター", city: "金沢市鞍月", date: "2026-11-24", lat: 36.5935, lon: 136.6260,
-    buy: "金沢駅「あんと」（会場には一般向けの売店はなさそう）",
+    buy: "金沢駅「金沢百番街 あんと」",
     items: [
-      { k: "kinpaku", name: "金箔を使ったお菓子", q: "金箔 お菓子 金沢 お土産", tags: ["配る"] },
-      { k: "boucha", name: "加賀棒茶（ほうじ茶）", q: "加賀棒茶", tags: ["配る"] },
-      { k: "okiagari", name: "加賀八幡起上もなか（金沢 うら田）", tags: ["ちょっと良い"], note: "だるまの形のもなか" },
-      { k: "jizake", name: "石川の地酒", q: "石川 地酒 金沢 お土産", tags: ["自分用"], note: "駅の「金沢地酒蔵」で試飲できる" }
+      { k: "potatoChiffon", name: "ポテトシフォン（板屋）", q: "板屋 ポテトシフォン 金沢", tags: ["店舗限定"], note: "金沢百番街だけ" },
+      { k: "yuzuCake", name: "金沢ゆずケーキ（大地たなつや）", q: "金沢ゆずケーキ 大地たなつや", tags: ["店舗限定", "配る"], note: "「あんと」限定" },
+      { k: "tamakome", name: "金沢たまこめこ（大地たなつや）", q: "金沢たまこめこ 大地たなつや", tags: ["店舗限定"], note: "「あんと」限定" },
+      { k: "hyakuemon", name: "ラングドシャ（石川百右衛門）", q: "石川百右衛門 ラングドシャ", tags: ["店舗限定", "配る"], note: "お店は「あんと」だけ" }
     ] },
   { id: "sendai", area: "仙台", venue: "宮城県建設業会館", city: "仙台市青葉区", date: "2026-12-01", lat: 38.2660, lon: 140.8650,
-    buy: "仙台駅「おみやげ処せんだい」",
+    buy: "仙台駅（エスパル）。賣茶翁と玉澤は街なかの店",
     items: [
-      { k: "haginotsuki", name: "萩の月", tags: ["配る"] },
-      { k: "kikufuku", name: "喜久福（生クリーム大福）", q: "喜久福 仙台", tags: ["自分用", "要冷凍"], note: "保冷バッグに入れてもらう" },
-      { k: "gyutan", name: "牛たんジャーキー", tags: ["自分用"] },
-      { k: "sasakama", name: "笹かまぼこ", tags: ["自分用", "要冷蔵"] }
+      { k: "michinoku", name: "みち乃くせんべい（賣茶翁）", q: "賣茶翁 みち乃くせんべい", tags: ["通販なし", "ちょっと良い"], note: "お店は青葉区春日町だけ。会場の支倉町から近い" },
+      { k: "kinakoSand", name: "きなこサンド（松華堂菓子店）", q: "松華堂菓子店 きなこサンド", tags: ["店舗限定", "配る"], note: "お店は松島と仙台駅だけ" },
+      { k: "shimobashira", name: "霜ばしら（九重本舗 玉澤）", q: "霜ばしら 九重本舗玉澤", tags: ["季節限定", "ちょっと良い"], note: "10月〜4月だけ。お店は本店だけ。通販もあるが、届くまで2か月ほどかかるという記事あり" }
     ] },
   { id: "osaka", area: "大阪", venue: "大阪商工会議所", city: "大阪市中央区", date: "2026-12-08", lat: 34.6830, lon: 135.5145,
-    buy: "新大阪駅・大阪駅",
+    buy: "新大阪駅",
     items: [
-      { k: "petitbanana", name: "大阪プチバナナ", tags: ["配る"] },
-      { k: "rikuro", name: "りくろーおじさんのチーズケーキ", tags: ["自分用"], note: "当日中に食べるのがおすすめ" },
-      { k: "horai", name: "551蓬莱の豚まん", tags: ["自分用", "要冷蔵"] }
-    ] },
+      { k: "chauchau", name: "CARAMEL CHAUCHAU（OKINI菓子工房）", q: "CARAMEL CHAUCHAU 新大阪", tags: ["店舗限定", "配る"], note: "新大阪駅の新幹線改札内（PLUSTA Gift）だけ。チャウチャウ犬の箱" },
+      { k: "uguisuBall", name: "手揚げのうぐいすボール（植垣米菓）", q: "手揚げ うぐいすボール 新大阪", tags: ["店舗限定", "配る"], note: "新大阪駅限定（エキマルシェ新大阪・直営店）" },
+      { k: "ichigoRoll", name: "堂島いちごヨーグルトロール（モンシェール）", q: "堂島いちごヨーグルトロール モンシェール 新大阪", tags: ["店舗限定", "要冷蔵"], note: "新大阪駅限定。その日のうちに食べる" }
+    ], note: "551の豚まん・りくろーおじさんのチーズケーキは通販があるので外しました" },
   { id: "aichi", area: "名古屋", venue: "ウインクあいち", city: "名古屋駅から徒歩5分", date: "2026-12-14", lat: 35.1730, lon: 136.8860,
-    buy: "名古屋駅の地下街・タカシマヤ・名鉄百貨店の地下",
+    buy: "名古屋駅の構内・ジェイアール名古屋タカシマヤ",
     items: [
-      { k: "yukari", name: "ゆかり（坂角総本舗）", tags: ["配る"], note: "海老せんべい" },
-      { k: "uirobar", name: "ウイロバー（大須ういろ）", tags: ["配る"] },
-      { k: "ogura", name: "小倉トーストラングドシャ", tags: ["配る"] },
-      { k: "misen", name: "味仙の台湾ラーメン", tags: ["自分用"], note: "日持ちする" }
+      { k: "piyorin", name: "ぴよりん", q: "ぴよりん 名古屋駅", tags: ["店舗限定", "要冷蔵"], note: "名古屋駅構内の店だけ。くずれやすく、その日のうちに食べる。行列あり" },
+      { k: "namaRamune", name: "生ラムネ 限定3種セット（ザ・ラムネラバーズ）", q: "ザ・ラムネラバーズ 生ラムネ 名古屋 高島屋", tags: ["店舗限定", "配る"], note: "ジェイアール名古屋タカシマヤ限定" },
+      { k: "harieMini", name: "バームクーヘンmini（クラブハリエ）", q: "クラブハリエ バームクーヘンmini 名古屋 タカシマヤ", tags: ["店舗限定"], note: "ジェイアール名古屋タカシマヤの売り場限定" },
+      { k: "matchaChoco", name: "シュガーバターの木 お抹茶ショコラ", q: "シュガーバターの木 お抹茶ショコラ 名古屋", tags: ["地域限定", "配る"], note: "名古屋地区限定（名古屋駅・タカシマヤ・中部国際空港）" }
     ] },
   { id: "okinawa", area: "沖縄", venue: "沖縄県産業支援センター", city: "那覇市小禄（ゆいレール小禄駅）", date: "2027-01-29", lat: 26.1960, lon: 127.6650,
     buy: "那覇空港 2階の出発階",
     items: [
-      { k: "beniimo", name: "紅いもタルト", tags: ["配る"] },
-      { k: "yukishio", name: "雪塩ちんすこう", tags: ["配る"] },
-      { k: "kokuto", name: "石垣島の黒糖チョコレート（ロイズ）", tags: ["配る"], note: "個包装" },
-      { k: "orion", name: "オリオンビール", q: "オリオンビール 缶", tags: ["自分用"], note: "重いので配送も考える" }
+      { k: "shuri", name: "紅芋レアケーキ シュリ（フェスティバロ）", q: "紅芋レアケーキ シュリ 那覇空港", tags: ["店舗限定", "配る"], note: "那覇空港限定（JAL PLAZA など）。半分とかして食べるお菓子" },
+      { k: "soranchuWatagashi", name: "空人 わたがし", q: "空人 わたがし 那覇空港", tags: ["店舗限定", "配る"], note: "那覇空港限定" },
+      { k: "kusuCastella", name: "古酒（くーす）カステラ", q: "古酒カステラ 那覇空港", tags: ["店舗限定", "ちょっと良い"], note: "那覇空港限定" }
     ] }
 ];
 const WEEK = ["日", "月", "火", "水", "木", "金", "土"];
@@ -612,7 +608,7 @@ function placeCard(p, t, np) {
         el("div", { class: "info" },
           el("a", { class: "name", href: imageSearchUrl(p, it), target: "_blank", rel: "noopener", title: it.name + " の画像を検索" },
             it.name, el("span", { class: "ext", "aria-hidden": "true", text: "画像 ↗" })),
-          el("span", { class: "tags" }, it.tags.map((tg) => el("span", { class: "tag" + (tg.startsWith("要") ? " cold" : tg === "自分用" ? " self" : ""), text: tg }))),
+          el("span", { class: "tags" }, it.tags.map((tg) => el("span", { class: "tag" + (tg === "通販なし" ? " nomail" : tg.startsWith("要") ? " cold" : tg === "自分用" ? " self" : ""), text: tg }))),
           it.note ? el("span", { class: "note", text: it.note }) : null),
         el("div", { class: "acts" }, want, got)),
       noteInput);
