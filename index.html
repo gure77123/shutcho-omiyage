@@ -151,6 +151,7 @@ button { cursor: pointer; }
 }
 .tog.want[aria-pressed="true"] { background: var(--shu); border-color: var(--shu); color: var(--surface); }
 .tog.got[aria-pressed="true"] { background: var(--ok); border-color: var(--ok); color: var(--surface); }
+.tog.non[aria-pressed="true"] { background: var(--muted); border-color: var(--muted); color: var(--surface); }
 .tog[disabled] { opacity: .5; cursor: default; }
 .items .reqnote {
   width: 100%; border: 1px solid var(--line); border-radius: 8px; background: var(--surface);
@@ -196,6 +197,8 @@ button { cursor: pointer; }
 .tag.cold { background: var(--shu-soft); color: var(--shu); }
 .tag.self { background: var(--ok-soft); color: var(--ok); }
 .items li.done .name { text-decoration: line-through; color: var(--muted); }
+.items li.non .name { color: var(--muted); }
+.st.non { background: var(--bg); color: var(--muted); border: 1px solid var(--line); }
 .count { font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
 
 .photos { display: grid; gap: 8px; }
@@ -277,6 +280,7 @@ button { cursor: pointer; }
 
   <footer class="foot">
     <span>お土産の候補は 2026-10-17 に調べました。各地とも「現地でしか買えない」ものを先に、通販でも買える「定番」をあとに並べています。「通販なし」は記事に通販がないと書かれていたもの、「店舗限定」「地域限定」はその店・地域だけで売っていて、調べた範囲で通販が見つからなかったものです。限定品は入れ替わりが早いので、出発前にお店のサイトで確かめてください。</span>
+    <span>「ノン！」は、売り切れなどで買えなかった・だめだったときに押します。</span>
     <span>名物の名前を押すと、その名物の画像検索（Google）が新しいタブで開きます。</span>
     <span id="footShare">写真・「買ってきて」・「買った」の印は、この帳面を共有した人と同じものが見えます。</span>
   </footer>
@@ -455,6 +459,8 @@ function shotLabel(ph) {
 /* ---------- 描画 ---------- */
 function itemKey(p, it) { return p.id + "-" + it.k; }
 function itemState(p, it) { return state.items[itemKey(p, it)] || {}; }
+// 買えたかどうか: "got"（買った）・"non"（ノン！＝買えなかった）・""（まだ）
+function result(s) { return s.done === true ? "got" : s.done === "non" ? "non" : ""; }
 
 function render() {
   // 入力中のメモ欄は、相手の更新で描き直しても続けて書けるようにする
@@ -471,17 +477,18 @@ function renderWish(t) {
   const box = $("wish"); box.replaceChildren();
   const groups = PLACES.map((p) => ({ p, list: p.items.filter((it) => itemState(p, it).req) })).filter((g) => g.list.length);
   const all = groups.flatMap((g) => g.list.map((it) => itemState(g.p, it)));
-  const got = all.filter((s) => s.done).length;
+  const got = all.filter((s) => result(s) === "got").length;
+  const non = all.filter((s) => result(s) === "non").length;
   const local = state.mode === "local";
   const shareBtn = groups.length && local && !FIREBASE_CONFIG ? el("button", { class: "btn small", type: "button", onclick: shareWish }, "リンクで送る") : null;
   const copyBtn = groups.length ? el("button", { class: "btn ghost small", type: "button", onclick: copyWish }, local ? "文章をコピー" : "お願いリストをコピー") : null;
   box.append(el("div", { class: "bar" },
-    el("div", {}, el("h2", { text: "買ってきてリスト" }), all.length ? el("div", { class: "sum", text: "お願い " + all.length + "件・買った " + got + "件" }) : null),
+    el("div", {}, el("h2", { text: "買ってきてリスト" }), all.length ? el("div", { class: "sum", text: "お願い " + all.length + "件・買った " + got + "件" + (non ? "・ノン！ " + non + "件" : "") }) : null),
     el("div", { class: "uploadbar" }, shareBtn, copyBtn)));
   if (state.incoming) {
     const inc = Object.values(state.incoming);
     box.append(el("div", { class: "notice" },
-      el("div", { text: "送られてきたリストがあります（お願い " + inc.filter((s) => s.req).length + "件・買った " + inc.filter((s) => s.done).length + "件）。取り込むと、この端末の「買ってきて」「買った」の印が、送られてきた内容に置きかわります。" }),
+      el("div", { text: "送られてきたリストがあります（お願い " + inc.filter((s) => s.req).length + "件・買った " + inc.filter((s) => result(s) === "got").length + "件）。取り込むと、この端末の「買ってきて」「買った」の印が、送られてきた内容に置きかわります。" }),
       el("div", { class: "uploadbar", style: "margin-top:8px" },
         el("button", { class: "btn small", type: "button", onclick: importIncoming }, "取り込む"),
         el("button", { class: "btn ghost small", type: "button", onclick: () => { state.incoming = null; clearHash(); render(); } }, "取り込まない"))));
@@ -497,7 +504,7 @@ function renderWish(t) {
       el("h3", {}, el("a", { href: "#" + g.p.id, text: g.p.area }), el("span", { text: fmtDate(g.p) + (placeDay(g.p) < t ? "・行った" : "") })),
       el("ul", { class: "wlist" }, g.list.map((it) => {
         const s = itemState(g.p, it);
-        return el("li", {}, el("span", { class: "st " + (s.done ? "ok" : "todo"), text: s.done ? "買った" : "まだ" }),
+        return el("li", {}, el("span", { class: "st " + ({ got: "ok", non: "non" }[result(s)] || "todo"), text: { got: "買った", non: "ノン！" }[result(s)] || "まだ" }),
           el("span", { text: it.name }), s.note ? el("span", { class: "nt", text: s.note }) : null);
       }))));
   }
@@ -515,7 +522,7 @@ function wishText() {
     lines.push("", "■ " + p.area + " " + fmtDate(p), "　買う場所：" + p.buy);
     for (const it of list) {
       const s = itemState(p, it);
-      lines.push("・" + it.name + (s.note ? "（" + s.note + "）" : "") + (s.done ? " … 買った" : ""));
+      lines.push("・" + it.name + (s.note ? "（" + s.note + "）" : "") + ({ got: " … 買った", non: " … ノン！（買えなかった）" }[result(s)] || ""));
     }
   }
   return lines.join("\n");
@@ -523,7 +530,7 @@ function wishText() {
 /* ---------- リンクで送る（GitHub Pages など、Claudeの外で開いたとき） ---------- */
 function shareUrl() {
   const data = {};
-  for (const [k, s] of Object.entries(state.items)) if (s.req || s.done) data[k] = [s.req ? 1 : 0, s.done ? 1 : 0, s.note || ""];
+  for (const [k, s] of Object.entries(state.items)) if (s.req || s.done) data[k] = [s.req ? 1 : 0, { got: 1, non: 2 }[result(s)] || 0, s.note || ""];
   return location.href.split("#")[0] + "#list=" + encodeURIComponent(JSON.stringify(data));
 }
 function readIncoming() {
@@ -532,7 +539,7 @@ function readIncoming() {
   try {
     const data = JSON.parse(decodeURIComponent(h.slice(6)));
     const out = {};
-    for (const [k, v] of Object.entries(data)) if (Array.isArray(v)) out[k] = { req: !!v[0], done: !!v[1], note: String(v[2] || "").slice(0, 60) };
+    for (const [k, v] of Object.entries(data)) if (Array.isArray(v)) out[k] = { req: !!v[0], done: v[1] === 2 ? "non" : !!v[1], note: String(v[2] || "").slice(0, 60) };
     return out;
   } catch (e) { return null; }
 }
@@ -622,7 +629,8 @@ function placeCard(p, t, np) {
   const { m, d } = ymdParts(p.date);
   const stamp = el("div", { class: "stamp" + (photos.length ? " inked" : ""), "aria-label": photos.length ? "写真あり" : "まだ写真なし" },
     el("span", {}, p.area, el("small", { text: m + "." + String(d).padStart(2, "0") })));
-  const done = p.items.filter((it) => itemState(p, it).done).length;
+  const done = p.items.filter((it) => result(itemState(p, it)) === "got").length;
+  const nonCount = p.items.filter((it) => result(itemState(p, it)) === "non").length;
   const asked = p.items.filter((it) => itemState(p, it).req).length;
   const ro = !state.ready || !state.canWrite;
 
@@ -631,8 +639,11 @@ function placeCard(p, t, np) {
     const s = itemState(p, it);
     const want = el("button", { class: "tog want", type: "button", "aria-pressed": s.req ? "true" : "false", disabled: ro,
       onclick: () => writeItem(key, { req: !s.req }) }, s.req ? "♥ 買ってきて" : "♡ 買ってきて");
-    const got = el("button", { class: "tog got", type: "button", "aria-pressed": s.done ? "true" : "false", disabled: ro,
-      onclick: () => writeItem(key, { done: !s.done }) }, s.done ? "✓ 買った" : "買った");
+    const r = result(s);
+    const got = el("button", { class: "tog got", type: "button", "aria-pressed": r === "got" ? "true" : "false", disabled: ro,
+      onclick: () => writeItem(key, { done: r === "got" ? false : true }) }, r === "got" ? "✓ 買った" : "買った");
+    const non = el("button", { class: "tog non", type: "button", "aria-pressed": r === "non" ? "true" : "false", disabled: ro,
+      title: "無理だった・だめだった", onclick: () => writeItem(key, { done: r === "non" ? false : "non" }) }, r === "non" ? "✕ ノン！" : "ノン！");
     let noteInput = null;
     if (s.req) {
       noteInput = el("input", { class: "reqnote", type: "text", id: "n-" + key, maxlength: "60", disabled: ro,
@@ -641,14 +652,14 @@ function placeCard(p, t, np) {
         onkeydown: (e) => { if (e.key === "Enter") e.target.blur(); } });
       noteInput.value = s.note || "";
     }
-    return el("li", { class: (s.req ? "req " : "") + (s.done ? "done" : "") },
+    return el("li", { class: (s.req ? "req " : "") + (r === "got" ? "done" : r === "non" ? "non" : "") },
       el("div", { class: "row1" },
         el("div", { class: "info" },
           el("a", { class: "name", href: imageSearchUrl(p, it), target: "_blank", rel: "noopener", title: it.name + " の画像を検索" },
             it.name, el("span", { class: "ext", "aria-hidden": "true", text: "画像 ↗" })),
           el("span", { class: "tags" }, it.tags.map((tg) => el("span", { class: "tag" + (tg === "通販なし" ? " nomail" : tg === "通販あり" ? " mail" : tg.startsWith("要") ? " cold" : tg === "自分用" ? " self" : ""), text: tg }))),
           it.note ? el("span", { class: "note", text: it.note }) : null),
-        el("div", { class: "acts" }, want, got)),
+        el("div", { class: "acts" }, want, got, non)),
       noteInput);
   };
   // 現地でしか買えないものを先に、通販でも買える定番をあとに
@@ -673,7 +684,7 @@ function placeCard(p, t, np) {
     el("div", { class: "buy" }, el("b", { text: "買う場所" }), el("span", { text: p.buy })),
     p.note ? el("div", { class: "notice", text: p.note }) : null,
     items,
-    p.items.length ? el("div", { class: "count", text: "お願い " + asked + "・買った " + done + "（候補 " + p.items.length + "）" }) : null,
+    p.items.length ? el("div", { class: "count", text: "お願い " + asked + "・買った " + done + (nonCount ? "・ノン！ " + nonCount : "") + "（候補 " + p.items.length + "）" }) : null,
     el("div", { class: "photos" }, el("div", { class: "bar" }, el("h3", { text: "写真 " + photos.length + "枚" }), addBtn), grid));
 }
 
@@ -995,7 +1006,7 @@ function renderRoom() {
         // いまこの端末にある印は、新しい帳面に引き継ぐ
         const carry = state.items;
         await startFirebase(newRoomCode());
-        for (const [k, v] of Object.entries(carry)) if (v.req || v.done) writeItem(k, { req: !!v.req, note: v.note || "", done: !!v.done });
+        for (const [k, v] of Object.entries(carry)) if (v.req || v.done) writeItem(k, { req: !!v.req, note: v.note || "", done: v.done === "non" ? "non" : !!v.done });
         sendRoomLink();
       } }, "2人用の帳面を作る")));
   }
