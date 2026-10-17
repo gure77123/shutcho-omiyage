@@ -1,0 +1,28 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // 帳面ごとの合言葉（20〜40文字）を知っている人だけが読み書きできる。帳面の一覧は誰も読めない
+    match /rooms/{room} {
+      function okRoom() { return room.size() >= 20 && room.size() <= 40; }
+
+      match /items/{item} {
+        allow read, delete: if okRoom();
+        allow create, update: if okRoom()
+          && request.resource.data.keys().hasOnly(['req', 'note', 'done'])
+          && (!('note' in request.resource.data) || (request.resource.data.note is string && request.resource.data.note.size() <= 60));
+      }
+      match /photos/{photo} {
+        allow read, delete: if okRoom();
+        allow create, update: if okRoom()
+          && request.resource.data.keys().hasOnly(['place', 'how', 'takenAt', 'memo', 'addedAt'])
+          && request.resource.data.memo is string && request.resource.data.memo.size() <= 300;
+      }
+      match /photoData/{photo} {
+        allow read, delete: if okRoom();
+        allow create: if okRoom()
+          && request.resource.data.keys().hasOnly(['data'])
+          && request.resource.data.data is string && request.resource.data.data.size() < 1000000;
+      }
+    }
+  }
+}
